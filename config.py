@@ -1,0 +1,90 @@
+"""
+SmartVision 配置文件
+支持多种大模型API的批量视频处理系统
+"""
+
+import os
+import tempfile
+
+# API配置
+API_HOST = "0.0.0.0"
+API_PORT = 5000
+
+# 临时文件配置 - 可以修改为其他盘符，如 "D:\\temp" 或 "E:\\temp"
+TEMP_DIR = os.getenv("SMARTVISION_TEMP_DIR", "")  # 环境变量优先
+if not TEMP_DIR:
+    # 使用指定的D盘解码文件夹
+    TEMP_DIR = "D:\\解码文件夹"  # 修改为D盘解码文件夹
+    
+    # 确保目录存在
+    if not os.path.exists(TEMP_DIR):
+        try:
+            os.makedirs(TEMP_DIR, exist_ok=True)
+            print(f"✅ 已创建临时文件目录: {TEMP_DIR}")
+        except Exception as e:
+            print(f"❌ 创建目录失败，使用默认临时目录: {e}")
+            TEMP_DIR = tempfile.gettempdir()
+
+# FFmpeg配置 - 指定ffmpeg可执行文件路径
+FFMPEG_PATH = os.getenv("FFMPEG_PATH", "ffmpeg")  # 默认使用系统PATH中的ffmpeg，或通过环境变量指定完整路径
+
+# 模型选择 (moondream, openai, claude, gemini, qwen)
+# 注意：视频处理推荐使用 openai 或 claude，它们对视频支持更好
+# Moondream 专门用于目标检测功能，其他模型用于视频/图像问答
+MODEL_TYPE = os.getenv("MODEL_TYPE", "qwen")  # 使用通义千问，已有有效API Key
+
+# Moondream API 配置
+MOONDREAM_API_KEY = os.getenv("MOONDREAM_API_KEY", "")
+
+# OpenAI API 配置
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")  # 或自定义代理地址
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")  # 或 gpt-4-vision-preview
+
+# Claude API 配置
+CLAUDE_API_KEY = os.getenv("CLAUDE_API_KEY", "")
+CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-3-5-sonnet-20241022")
+
+# Gemini API 配置
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
+
+# 通义千问 API 配置
+QWEN_API_KEY = os.getenv("QWEN_API_KEY", "")
+QWEN_MODEL = os.getenv("QWEN_MODEL", "qwen3-vl-plus-2025-09-23")  # Qwen3-VL-Plus 最新模型
+
+# 图像配置
+DEFAULT_IMAGE_PATH = os.getenv("DEFAULT_IMAGE_PATH", "")
+
+# 模型配置
+MODEL_CONFIG = {
+    "moondream": {
+        "api_key": MOONDREAM_API_KEY,
+    },
+    "openai": {
+        "api_key": OPENAI_API_KEY,
+        "base_url": OPENAI_BASE_URL,
+        "model": OPENAI_MODEL,
+    },
+    "claude": {
+        "api_key": CLAUDE_API_KEY,
+        "model": CLAUDE_MODEL,
+    },
+    "gemini": {
+        "api_key": GEMINI_API_KEY,
+        "model": GEMINI_MODEL,
+    },
+    "qwen": {
+        "api_key": QWEN_API_KEY,
+        "model": QWEN_MODEL,
+    }
+}
+
+# 常见问题模板
+QUESTION_TEMPLATES = [
+    "What's in this image?",
+    "Describe this image in detail",
+    "What objects can you see?",
+    "What is the main subject?",
+]
+

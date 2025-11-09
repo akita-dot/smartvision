@@ -1,0 +1,33 @@
+# SmartVision 批量视频处理系统 - 完整依赖包
+# 核心框架
+flask
+flask-cors
+
+# AI模型相关
+moondream
+torch
+transformers
+openai
+anthropic
+google-generativeai
+dashscope
+
+# 图像/视频处理
+pillow
+opencv-python
+imageio
+imageio-ffmpeg
+
+# 数据处理
+openpyxl
+pandas
+
+# 网络请求
+requests
+
+# 环境变量管理
+python-dotenv
+
+
+
+
