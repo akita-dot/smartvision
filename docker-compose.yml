@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  smartvision:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smartvision
+    ports:
+      - "5000:5000"
+    environment:
+      # 模型配置
+      - MODEL_TYPE=${MODEL_TYPE:-qwen}
+      # API 密钥（从 .env 文件或环境变量读取）
+      - QWEN_API_KEY=${QWEN_API_KEY}
+      - MOONDREAM_API_KEY=${MOONDREAM_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # 其他配置
+      - FFMPEG_PATH=${FFMPEG_PATH:-ffmpeg}
+      - SMARTVISION_TEMP_DIR=${SMARTVISION_TEMP_DIR:-/tmp}
+    volumes:
+      # 上传文件目录
+      - ./uploads:/app/uploads
+      # 临时文件目录（如果需要持久化）
+      - ./temp:/app/temp
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+

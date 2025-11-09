@@ -50,5 +50,9 @@ Thumbs.db
 *.png
 *.gif
 
+# Docker
+*.tar.gz
+deploy/
+
 
 
