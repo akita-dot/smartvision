@@ -164,7 +164,7 @@ class ModelManager:
                 
                 # 检查压缩后是否满足要求
                 if compressed_base64_size_mb < 10:
-                    video_path = compressed_path
+                video_path = compressed_path
                     print(f"✅ 压缩完成，新大小: {compressed_size_mb:.1f}MB (Base64后: {compressed_base64_size_mb:.2f}MB < 10MB)")
                 else:
                     print(f"⚠️  压缩后Base64仍为{compressed_base64_size_mb:.2f}MB，需要进一步压缩...")
@@ -787,13 +787,13 @@ class ModelManager:
         
         # 使用官方推荐的调用方式
         try:
-            response = MultiModalConversation.call(
-                api_key=self.config["api_key"],  # 直接传递API Key
-                model=self.config["model"],
-                messages=messages,
-                stream=False  # 非流式调用
-            )
-            
+        response = MultiModalConversation.call(
+            api_key=self.config["api_key"],  # 直接传递API Key
+            model=self.config["model"],
+            messages=messages,
+            stream=False  # 非流式调用
+        )
+        
             # 检查响应状态码（API可能返回错误状态而不是抛出异常）
             if hasattr(response, 'status_code') and response.status_code is not None:
                 if response.status_code >= 400:
@@ -807,21 +807,21 @@ class ModelManager:
                 error_code = getattr(response, 'code', 'InternalError')
                 raise Exception(f"{error_code}: {error_message}")
             
-            # 处理响应格式
+        # 处理响应格式
             if hasattr(response.output, 'choices') and response.output.choices:
-                content = response.output.choices[0].message.content[0]
-                if hasattr(content, 'text'):
-                    answer = content.text
-                elif isinstance(content, dict) and 'text' in content:
-                    answer = content['text']
-                else:
-                    answer = str(content)
+            content = response.output.choices[0].message.content[0]
+            if hasattr(content, 'text'):
+                answer = content.text
+            elif isinstance(content, dict) and 'text' in content:
+                answer = content['text']
             else:
+                answer = str(content)
+        else:
                 raise Exception("API响应中choices为空或不存在")
-            
-            return {
-                "answer": answer,
-                "request_id": getattr(response, 'request_id', '')
+        
+        return {
+            "answer": answer,
+            "request_id": getattr(response, 'request_id', '')
             }
         except Exception as e:
             error_msg = str(e)
@@ -837,7 +837,7 @@ class ModelManager:
                 return {
                     "answer": f"通义千问处理失败: {error_msg}",
                     "error": error_msg
-                }
+        }
     
     def _query_qwen_video(self, video_path, question):
         """通义千问视频查询"""
@@ -914,7 +914,7 @@ class ModelManager:
                         else:
                             # 普通错误：智能重试间隔
                             sleep_time = [3, 5, 10, 15][min(attempt, 3)]
-                            print(f"等待{sleep_time}秒后重试...")
+                        print(f"等待{sleep_time}秒后重试...")
                         
                         time.sleep(sleep_time)
                     else:
@@ -925,14 +925,14 @@ class ModelManager:
             try:
                 if hasattr(response, 'output') and response.output is not None:
                     if hasattr(response.output, 'choices') and response.output.choices:
-                        content = response.output.choices[0].message.content[0]
-                        if hasattr(content, 'text'):
-                            answer = content.text
-                        elif isinstance(content, dict) and 'text' in content:
-                            answer = content['text']
-                        else:
-                            answer = str(content)
-                    else:
+                content = response.output.choices[0].message.content[0]
+                if hasattr(content, 'text'):
+                    answer = content.text
+                elif isinstance(content, dict) and 'text' in content:
+                    answer = content['text']
+                else:
+                    answer = str(content)
+            else:
                         # choices为空或不存在
                         raise Exception("API响应中choices为空或不存在")
                 else:
