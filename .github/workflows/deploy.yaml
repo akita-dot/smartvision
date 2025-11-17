@@ -138,3 +138,121 @@ jobs:
           cache-to: type=gha,mode=max
         continue-on-error: true
         timeout-minutes: 15
+
+  # 构建并推送 Docker 镜像到 Docker Hub
+  docker-build-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: [lint-and-test, build-frontend]
+    if: github.ref == 'refs/heads/main'  # 只在 main 分支推送
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download frontend build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: akita514/smartvision
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+        timeout-minutes: 20
+
+  # 部署到服务器（可选）- 需要配置服务器信息
+  deploy-to-server:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+    needs: docker-build-push
+    if: github.ref == 'refs/heads/main'  # 只在 main 分支部署
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            # 拉取最新镜像
+            docker pull akitadot/smartvision:latest
+            
+            # 停止并删除旧容器
+            docker stop smartvision-app || true
+            docker rm smartvision-app || true
+            
+            # 启动新容器
+            docker run -d \
+              --name smartvision-app \
+              -p 5000:5000 \
+              -v /path/to/uploads:/app/uploads \
+              -v /path/to/models:/app/models \
+              --restart unless-stopped \
+              akitadot/smartvision:latest
+            
+            # 清理无用镜像
+            docker image prune -f
+
+  # 使用 GitHub Actions Runner 部署（推荐方案）
+  deploy-with-runner:
+    name: Deploy with Self-Hosted Runner
+    runs-on: self-hosted  # 使用自托管 runner
+    needs: docker-build-push
+    if: github.ref == 'refs/heads/main'  # 只在 main 分支部署
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Pull latest Docker image
+        run: |
+          docker pull akitadot/smartvision:latest
+      
+      - name: Stop and remove old container
+        run: |
+          docker stop smartvision-app || true
+          docker rm smartvision-app || true
+      
+      - name: Start new container
+        run: |
+          docker run -d \
+            --name smartvision-app \
+            -p 5000:5000 \
+            -v /opt/smartvision/uploads:/app/uploads \
+            -v /opt/smartvision/models:/app/models \
+            --restart unless-stopped \
+            akitadot/smartvision:latest
+      
+      - name: Clean up unused images
+        run: |
+          docker image prune -f

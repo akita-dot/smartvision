@@ -18,6 +18,39 @@
 pip install -r requirements.txt
 ```
 
+### 2. 配置持续部署 (CD)
+
+项目已配置完整的 CI/CD 流水线，支持自动构建和部署。
+
+#### 启用自动部署
+
+1. **设置 GitHub Secrets**（在仓库 Settings → Secrets and variables → Actions 中）：
+   ```
+   DOCKERHUB_USERNAME = 你的Docker Hub用户名
+   DOCKERHUB_TOKEN = 你的Docker Hub访问令牌
+   ```
+
+2. **获取 Docker Hub 令牌**：
+   - 登录 [Docker Hub](https://hub.docker.com)
+   - 进入 Account Settings → Security → New Access Token
+   - 创建具有读写权限的访问令牌
+
+3. **服务器部署（可选）**：
+   ```
+   SERVER_HOST = 服务器IP地址
+   SERVER_USERNAME = 服务器用户名
+   SERVER_SSH_KEY = 服务器SSH私钥
+   ```
+
+#### 流水线功能
+
+- ✅ **代码质量检查** - 语法检查和代码规范
+- ✅ **前端构建** - 自动构建 React 应用
+- ✅ **Docker 镜像构建** - 构建并推送到 Docker Hub
+- ✅ **自动部署** - 部署到服务器（需配置）
+
+详细配置请参考 [CD_SETUP.md](.github/workflows/CD_SETUP.md)
+
 ### 2. 配置API密钥
 
 **重要**：为了保护你的API密钥安全，请使用环境变量配置，不要直接在代码中硬编码密钥。
