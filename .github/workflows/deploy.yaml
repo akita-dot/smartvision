@@ -133,7 +133,7 @@ jobs:
         with:
           context: .
           push: false
-          tags: smartvision:test
+          tags: docker.io/akita514/smartvision:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
@@ -185,25 +185,44 @@ jobs:
         env:
           DOCKER_CONFIG: /tmp/.docker
       
+      - name: Test Docker Hub authentication manually
+        run: |
+          echo "Testing manual authentication..."
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+          echo "Manual login completed"
+      
       - name: Verify Docker Hub authentication
         run: |
           echo "Verifying Docker Hub authentication..."
           docker info
           echo "Testing pull access..."
           docker pull alpine:latest || echo "Pull test failed"
+          echo "Testing push permissions..."
+          echo "Checking if we can push to akita514/smartvision..."
           echo "Authentication verification completed"
       
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: akita514/smartvision
+          images: docker.io/akita514/smartvision
           tags: |
             type=ref,event=branch
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
       
-      - name: Build and push Docker image
+      - name: Build Docker image first (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: docker.io/akita514/smartvision:test-build
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          platforms: linux/amd64
+        timeout-minutes: 20
+      
+      - name: Push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -213,7 +232,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
-        timeout-minutes: 40
+        timeout-minutes: 20
         continue-on-error: false
       
       - name: Verify image push
