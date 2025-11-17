@@ -238,7 +238,12 @@ jobs:
       - name: Verify image push
         run: |
           echo "Verifying image was pushed successfully..."
-          docker pull ${{ steps.meta.outputs.tags }}
+          echo "Tags generated: ${{ steps.meta.outputs.tags }}"
+          # 尝试拉取每个生成的标签
+          for tag in ${{ steps.meta.outputs.tags }}; do
+            echo "Testing pull for tag: $tag"
+            docker pull $tag || echo "Failed to pull $tag"
+          done
           echo "Image verification completed"
 
   # 部署到服务器（可选）- 需要配置服务器信息
@@ -260,7 +265,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             # 拉取最新镜像
-            docker pull akitadot/smartvision:latest
+            docker pull docker.io/akita514/smartvision:latest
             
             # 停止并删除旧容器
             docker stop smartvision-app || true
@@ -273,7 +278,7 @@ jobs:
               -v /path/to/uploads:/app/uploads \
               -v /path/to/models:/app/models \
               --restart unless-stopped \
-              akitadot/smartvision:latest
+              docker.io/akita514/smartvision:latest
             
             # 清理无用镜像
             docker image prune -f
@@ -291,7 +296,7 @@ jobs:
       
       - name: Pull latest Docker image
         run: |
-          docker pull akitadot/smartvision:latest
+          docker pull docker.io/akita514/smartvision:latest
       
       - name: Stop and remove old container
         run: |
@@ -306,7 +311,7 @@ jobs:
             -v /opt/smartvision/uploads:/app/uploads \
             -v /opt/smartvision/models:/app/models \
             --restart unless-stopped \
-            akitadot/smartvision:latest
+            docker.io/akita514/smartvision:latest
       
       - name: Clean up unused images
         run: |
