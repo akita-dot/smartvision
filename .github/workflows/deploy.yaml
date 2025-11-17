@@ -168,6 +168,14 @@ jobs:
         env:
           DOCKER_CONFIG: /tmp/.docker
       
+      - name: Verify Docker Hub authentication
+        run: |
+          echo "Verifying Docker Hub authentication..."
+          docker info
+          echo "Testing pull access..."
+          docker pull alpine:latest || echo "Pull test failed"
+          echo "Authentication verification completed"
+      
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -189,6 +197,13 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64
         timeout-minutes: 40
+        continue-on-error: false
+      
+      - name: Verify image push
+        run: |
+          echo "Verifying image was pushed successfully..."
+          docker pull ${{ steps.meta.outputs.tags }}
+          echo "Image verification completed"
 
   # 部署到服务器（可选）- 需要配置服务器信息
   deploy-to-server:
