@@ -239,10 +239,11 @@ jobs:
         run: |
           echo "Verifying image was pushed successfully..."
           echo "Tags generated: ${{ steps.meta.outputs.tags }}"
-          # 尝试拉取每个生成的标签
-          for tag in ${{ steps.meta.outputs.tags }}; do
+          # 将标签字符串转换为数组并逐个测试
+          tags="${{ steps.meta.outputs.tags }}"
+          for tag in $tags; do
             echo "Testing pull for tag: $tag"
-            docker pull $tag || echo "Failed to pull $tag"
+            docker pull "$tag" || echo "Failed to pull $tag"
           done
           echo "Image verification completed"
 
@@ -265,7 +266,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             # 拉取最新镜像
-            docker pull docker.io/akita514/smartvision:latest
+            docker pull "docker.io/akita514/smartvision:latest"
             
             # 停止并删除旧容器
             docker stop smartvision-app || true
@@ -296,7 +297,7 @@ jobs:
       
       - name: Pull latest Docker image
         run: |
-          docker pull docker.io/akita514/smartvision:latest
+          docker pull "docker.io/akita514/smartvision:latest"
       
       - name: Stop and remove old container
         run: |
