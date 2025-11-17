@@ -247,14 +247,30 @@ jobs:
           done
           echo "Image verification completed"
 
-  # 部署到服务器（可选）- 需要配置服务器信息
+  ## 部署到服务器（可选）- 需要配置服务器信息
   deploy-to-server:
     name: Deploy to Server
     runs-on: ubuntu-latest
     needs: docker-build-push
-    if: github.ref == 'refs/heads/main' && secrets.SERVER_HOST != ''
+    if: github.ref == 'refs/heads/main'  # 仅保留分支检查，移除secrets检查
     
     steps:
+      - name: Check if server secrets exist
+        run: |
+          if [ -z "${{ secrets.SERVER_HOST }}" ]; then
+            echo "❌ SERVER_HOST secret is not set, aborting deployment"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SERVER_USERNAME }}" ]; then
+            echo "❌ SERVER_USERNAME secret is not set, aborting deployment"
+            exit 1
+          fi
+          if [ -z "${{ secrets.SERVER_SSH_KEY }}" ]; then
+            echo "❌ SERVER_SSH_KEY secret is not set, aborting deployment"
+            exit 1
+          fi
+        name: Validate server secrets
+      
       - name: Checkout code
         uses: actions/checkout@v4
       
