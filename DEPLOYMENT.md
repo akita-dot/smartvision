@@ -213,3 +213,10 @@ journalctl -u smartvision -f
 python backend_api.py  # 日志输出到控制台
 ```
 
+
+
+
+
+
+
+
