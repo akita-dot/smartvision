@@ -1,0 +1,17 @@
+# SmartVision CI/CD 构建专用依赖包（轻量版）
+# 核心框架
+flask
+flask-cors
+
+# 基础图像处理
+pillow
+
+# 数据处理
+openpyxl
+pandas
+
+# 网络请求
+requests
+
+# 环境变量管理
+python-dotenv

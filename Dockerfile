@@ -27,16 +27,19 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制 Python 依赖文件
-COPY requirements.txt .
+COPY requirements-ci.txt .
 
 # 安装 Python 依赖
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements-ci.txt
 
-# 复制后端代码
-COPY backend_api.py model_manager.py config.py ./
+# 复制后端代码、安装脚本和启动脚本
+COPY backend_api.py model_manager.py config.py install_ai_deps.py start.sh ./
 
 # 从构建阶段复制前端构建产物
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
+
+# 设置启动脚本执行权限
+RUN chmod +x start.sh
 
 # 创建必要的目录
 RUN mkdir -p uploads
@@ -48,8 +51,8 @@ ENV PYTHONUNBUFFERED=1
 # 暴露端口
 EXPOSE 5000
 
-# 启动命令
-CMD ["python", "backend_api.py"]
+# 启动命令（使用启动脚本）
+CMD ["./start.sh"]
 
 
 
