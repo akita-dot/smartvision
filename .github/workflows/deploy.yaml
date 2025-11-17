@@ -11,16 +11,16 @@ on:
       - main
       - master
       - develop
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:
 
 env:
   PYTHON_VERSION: '3.10'
   NODE_VERSION: '18'
 
 jobs:
-  # 代码质量检查和测试
-  lint-and-test:
-    name: Lint and Test
+  # 代码质量检查
+  lint:
+    name: Code Quality Check
     runs-on: ubuntu-latest
     
     steps:
@@ -36,22 +36,14 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install flake8 pytest
-          # 使用轻量级依赖文件
+          pip install flake8
           pip install -r requirements-ci.txt
-        timeout-minutes: 10
+        timeout-minutes: 5
       
       - name: Lint Python code
         run: |
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics || true
-        continue-on-error: true
-      
-      - name: Check Python syntax
-        run: |
-          # 只检查语法，不导入依赖（因为CI中不安装所有依赖）
-          python -m py_compile backend_api.py config.py || true
-          # model_manager.py 需要AI库，跳过语法检查
         continue-on-error: true
       
       - name: Set up Node.js
@@ -68,16 +60,14 @@ jobs:
       
       - name: Check frontend code
         working-directory: ./frontend
-        run: |
-          npm run build || echo "Build check completed"
-        continue-on-error: true
+        run: npm run build
         timeout-minutes: 5
 
   # 构建前端
   build-frontend:
     name: Build Frontend
     runs-on: ubuntu-latest
-    needs: lint-and-test
+    needs: lint
     
     steps:
       - name: Checkout code
@@ -98,54 +88,21 @@ jobs:
       - name: Build frontend
         working-directory: ./frontend
         run: npm run build
-        timeout-minutes: 5
+        timeout-minutes: 10
       
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: frontend-dist
-          path: frontend/dist
-          retention-days: 1
+          path: frontend/dist/
+          retention-days: 7
 
-  # 验证 Docker 构建（不推送）- 可选步骤
-  docker-build-test:
-    name: Test Docker Build
+  # 构建 Docker 镜像
+  build-docker:
+    name: Build Docker Image
     runs-on: ubuntu-latest
-    needs: [lint-and-test, build-frontend]
-    if: success() || failure()  # 即使前面的步骤失败也尝试构建
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Download frontend build
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-dist
-          path: frontend/dist
-        continue-on-error: true
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      
-      - name: Build Docker image (test only)
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: false
-          tags: docker.io/akita514/smartvision:test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64
-        continue-on-error: true
-        timeout-minutes: 30
-
-  # 构建并推送 Docker 镜像到 Docker Hub
-  docker-build-push:
-    name: Build and Push Docker Image
-    runs-on: ubuntu-latest
-    needs: [lint-and-test, build-frontend]
-    if: github.ref == 'refs/heads/main'  # 只在 main 分支推送
+    needs: [lint, build-frontend]
+    if: github.ref == 'refs/heads/main'
     
     steps:
       - name: Checkout code
@@ -159,47 +116,12 @@ jobs:
       
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      
-      - name: Debug - Check secrets
-        run: |
-          echo "Checking if secrets are available..."
-          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
-            echo "❌ DOCKERHUB_USERNAME is not set"
-            exit 1
-          else
-            echo "✅ DOCKERHUB_USERNAME is set"
-          fi
-          
-          if [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
-            echo "❌ DOCKERHUB_TOKEN is not set"
-            exit 1
-          else
-            echo "✅ DOCKERHUB_TOKEN is set"
-          fi
       
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-        env:
-          DOCKER_CONFIG: /tmp/.docker
-      
-      - name: Test Docker Hub authentication manually
-        run: |
-          echo "Testing manual authentication..."
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-          echo "Manual login completed"
-      
-      - name: Verify Docker Hub authentication
-        run: |
-          echo "Verifying Docker Hub authentication..."
-          docker info
-          echo "Testing pull access..."
-          docker pull alpine:latest || echo "Pull test failed"
-          echo "Testing push permissions..."
-          echo "Checking if we can push to akita514/smartvision..."
-          echo "Authentication verification completed"
       
       - name: Extract metadata
         id: meta
@@ -211,18 +133,7 @@ jobs:
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
       
-      - name: Build Docker image first (no push)
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: false
-          tags: docker.io/akita514/smartvision:test-build
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          platforms: linux/amd64
-        timeout-minutes: 20
-      
-      - name: Push Docker image
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -232,32 +143,16 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
-        timeout-minutes: 20
-        continue-on-error: false
-      
-      - name: Verify image push
-        run: |
-          echo "Verifying image was pushed successfully..."
-          echo "Tags generated: ${{ steps.meta.outputs.tags }}"
-          # 将标签字符串转换为数组并逐个测试
-          tags="${{ steps.meta.outputs.tags }}"
-          for tag in $tags; do
-            echo "Testing pull for tag: $tag"
-            docker pull "$tag" || echo "Failed to pull $tag"
-          done
-          echo "Image verification completed"
+        timeout-minutes: 30
 
-  # 部署到服务器（可选）- 需要配置服务器信息
-  deploy-to-server:
+  # 部署到服务器
+  deploy:
     name: Deploy to Server
     runs-on: ubuntu-latest
-    needs: docker-build-push
+    needs: build-docker
     if: github.ref == 'refs/heads/main' && secrets.SERVER_HOST != ''
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
@@ -269,7 +164,7 @@ jobs:
           command_timeout: 60s
           script: |
             # 拉取最新镜像
-            docker pull "docker.io/akita514/smartvision:latest"
+            docker pull docker.io/akita514/smartvision:latest
             
             # 停止并删除旧容器
             docker stop smartvision-app || true
@@ -279,28 +174,27 @@ jobs:
             docker run -d \
               --name smartvision-app \
               -p 5000:5000 \
-              -v /path/to/uploads:/app/uploads \
-              -v /path/to/models:/app/models \
+              -v /opt/smartvision/uploads:/app/uploads \
+              -v /opt/smartvision/models:/app/models \
               --restart unless-stopped \
               docker.io/akita514/smartvision:latest
             
             # 清理无用镜像
             docker image prune -f
 
-  # 使用 GitHub Actions Runner 部署（推荐方案）
-  deploy-with-runner:
-    name: Deploy with Self-Hosted Runner
-    runs-on: [self-hosted, Windows, X64]  # 使用自托管 runner，指定完整的标签匹配
-    needs: docker-build-push
-    if: github.ref == 'refs/heads/main'  # 只在 main 分支部署
+  # 本地部署（使用自托管 runner）
+  deploy-local:
+    name: Local Deployment
+    runs-on: [self-hosted, Windows, X64]
+    needs: build-docker
+    if: github.ref == 'refs/heads/main'
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       
       - name: Pull latest Docker image
-        run: |
-          docker pull "docker.io/akita514/smartvision:latest"
+        run: docker pull docker.io/akita514/smartvision:latest
       
       - name: Stop and remove old container
         run: |
@@ -309,16 +203,13 @@ jobs:
       
       - name: Start new container
         run: |
-          docker run -d \
-            --name smartvision-app \
-            -p 5000:5000 \
-            -v /opt/smartvision/uploads:/app/uploads \
-            -v /opt/smartvision/models:/app/models \
-            --restart unless-stopped \
+          docker run -d `
+            --name smartvision-app `
+            -p 5000:5000 `
+            -v D:/smartvision/uploads:/app/uploads `
+            -v D:/smartvision/models:/app/models `
+            --restart unless-stopped `
             docker.io/akita514/smartvision:latest
       
       - name: Clean up unused images
-        run: |
-          docker image prune -f
-
-  
+        run: docker image prune -f
