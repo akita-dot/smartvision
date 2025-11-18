@@ -246,7 +246,7 @@ jobs:
             docker pull "$tag" || echo "Failed to pull $tag"
           done
           echo "Image verification completed"
-  # 部署到服务器（可选）- 需要配置服务器信息
+  # 部署到服务器（使用 SSH 部署）
   deploy-to-server:
     name: Deploy to Server
     runs-on: ubuntu-latest
@@ -282,10 +282,10 @@ jobs:
             
             # 清理无用镜像
             docker image prune -f
-  # 使用 GitHub Actions Runner 部署（推荐方案）
-  deploy-with-runner:
-    name: Deploy with Self-Hosted Runner
-    runs-on: self-hosted  # 使用自托管 runner
+  # 部署到服务器（使用 SSH 部署）
+  deploy-to-server:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
     needs: docker-build-push
     if: github.ref == 'refs/heads/main'  # 只在 main 分支部署
     
@@ -293,25 +293,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Pull latest Docker image
-        run: |
-          docker pull "docker.io/akita514/smartvision:latest"
-      
-      - name: Stop and remove old container
-        run: |
-          docker stop smartvision-app || true
-          docker rm smartvision-app || true
-      
-      - name: Start new container
-        run: |
-          docker run -d \
-            --name smartvision-app \
-            -p 5000:5000 \
-            -v /opt/smartvision/uploads:/app/uploads \
-            -v /opt/smartvision/models:/app/models \
-            --restart unless-stopped \
-            docker.io/akita514/smartvision:latest
-      
-      - name: Clean up unused images
-        run: |
-          docker image prune -f
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            # 拉取最新镜像
+            docker pull "docker.io/akita514/smartvision:latest"
+            
+            # 停止并删除旧容器
+            docker stop smartvision-app || true
+            docker rm smartvision-app || true
+            
+            # 启动新容器
+            docker run -d \
+              --name smartvision-app \
+              -p 5000:5000 \
+              -v /opt/smartvision/uploads:/app/uploads \
+              -v /opt/smartvision/models:/app/models \
+              --restart unless-stopped \
+              docker.io/akita514/smartvision:latest
+            
+            # 清理无用镜像
+            docker image prune -f
