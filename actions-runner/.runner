@@ -1,9 +1,0 @@
-﻿{
-  "agentId": 21,
-  "agentName": "AKITA",
-  "poolId": 1,
-  "poolName": "Default",
-  "serverUrl": "https://pipelinesghubeus8.actions.githubusercontent.com/7h4qWMDaF7l3FywgaceP9WamFqF9TLl0mOORbRhYvuO0Ixygli/",
-  "gitHubUrl": "https://github.com/akita-dot/smartvision",
-  "workFolder": "_work"
-}
