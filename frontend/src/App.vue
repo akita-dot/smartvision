@@ -146,8 +146,6 @@
                         :rows="5"
                         placeholder="例如：请用一句中文总结视频内容"
                         :disabled="videoLoading"
-                        show-word-limit
-                        maxlength="2000"
                       />
                     </el-form-item>
 
@@ -276,8 +274,6 @@
                         placeholder="请输入您的问题（建议使用英文以获得更好效果）"
                         :disabled="!imageFile || loading"
                         @keyup.ctrl.enter="submitQuery"
-                        show-word-limit
-                        maxlength="500"
                       />
                     </el-form-item>
 
